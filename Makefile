@@ -4,7 +4,7 @@
 
 # Use bash for inline if-statements in arch_patch target
 SHELL:=bash
-OWNER:=jupyter
+OWNER:=saywhat1
 ARCH:=$(shell uname -m)
 DIFF_RANGE?=master...HEAD
 
@@ -14,12 +14,8 @@ ALL_STACKS:=base-notebook
 else
 ALL_STACKS:=base-notebook \
 	minimal-notebook \
-	r-notebook \
 	scipy-notebook \
-	tensorflow-notebook \
-	datascience-notebook \
-	pyspark-notebook \
-	all-spark-notebook
+	datascience-notebook
 endif
 
 ALL_IMAGES:=$(ALL_STACKS)
@@ -47,7 +43,6 @@ build/%: ## build the latest image for a stack
 	docker build $(DARGS) --rm --force-rm -t $(OWNER)/$(notdir $@):latest ./$(notdir $@)
 
 build-all: $(foreach I,$(ALL_IMAGES),arch_patch/$(I) build/$(I) ) ## build all stacks
-build-test-all: $(foreach I,$(ALL_IMAGES),arch_patch/$(I) build/$(I) test/$(I) ) ## build and test all stacks
 
 dev/%: ARGS?=
 dev/%: DARGS?=
@@ -67,24 +62,3 @@ n-docs-diff: ## number of docs/ files changed since branch from master
 
 n-other-diff: ## number of files outside docs/ changed since branch from master
 	@git diff --name-only $(DIFF_RANGE) -- ':!docs/' | wc -l | awk '{print $$1}'
-
-tx-en: ## rebuild en locale strings and push to master (req: GH_TOKEN)
-	@git config --global user.email "travis@travis-ci.org"
-	@git config --global user.name "Travis CI"
-	@git checkout master
-
-	@make -C docs clean gettext
-	@cd docs && sphinx-intl update -p _build/gettext -l en
-
-	@git add docs/locale/en
-	@git commit -m "[ci skip] Update en source strings (build: $$TRAVIS_JOB_NUMBER)"
-
-	@git remote add origin-tx https://$${GH_TOKEN}@github.com/jupyter/docker-stacks.git
-	@git push -u origin-tx master
-
-
-test/%: ## run tests against a stack
-	@TEST_IMAGE="$(OWNER)/$(notdir $@)" pytest test
-
-test/base-notebook: ## test supported options in the base notebook
-	@TEST_IMAGE="$(OWNER)/$(notdir $@)" pytest test base-notebook/test
